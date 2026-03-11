@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo do Algoritmo gerar_ro.py</title>
+  <style>
+    :root {
+      --bg: #f4efe7;
+      --panel: #fffaf2;
+      --ink: #1f2a2e;
+      --muted: #6c706a;
+      --line: #d9cdbd;
+      --accent: #0f766e;
+      --accent-soft: #d7f3ef;
+      --ro: #1d4ed8;
+      --ro-soft: #dbeafe;
+      --ca: #b45309;
+      --ca-soft: #fef3c7;
+      --shadow: 0 18px 40px rgba(50, 41, 28, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.11), transparent 28%),
+        radial-gradient(circle at top right, rgba(180, 83, 9, 0.12), transparent 24%),
+        linear-gradient(180deg, #f8f3ea 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      width: min(1320px, calc(100vw - 32px));
+      margin: 24px auto 48px;
+    }
+
+    .hero, .panel {
+      background: rgba(255, 250, 242, 0.94);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      border-radius: 28px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -60px -60px auto;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(15, 118, 110, 0.14), transparent 70%);
+      pointer-events: none;
+    }
+
+    h1, h2, h3 { margin: 0; line-height: 1.1; font-weight: 600; }
+    h1 { font-size: clamp(2rem, 5vw, 3.6rem); max-width: 12ch; }
+    p { margin: 0; line-height: 1.5; }
+
+    .hero-grid, .controls, .summary, .boards {
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero-grid { grid-template-columns: 1.5fr 1fr; align-items: end; }
+    .controls { margin-top: 18px; grid-template-columns: 1.3fr 1fr; }
+    .summary { margin-top: 18px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .boards { margin-top: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .legend, .buttons, .dataset-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .legend { justify-content: flex-end; }
+
+    .pill, button, .phase {
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 0.94rem;
+    }
+
+    .pill.base, .phase {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(15, 118, 110, 0.16);
+    }
+
+    .pill.ro { background: var(--ro-soft); color: var(--ro); border: 1px solid rgba(29, 78, 216, 0.16); }
+    .pill.ca { background: var(--ca-soft); color: var(--ca); border: 1px solid rgba(180, 83, 9, 0.18); }
+
+    .controller, .narration, .metric, .table-card, .footer-note {
+      padding: 18px;
+      border-radius: var(--radius);
+    }
+
+    .controller, .narration, .metric, .table-card {
+      display: grid;
+      gap: 12px;
+    }
+
+    .controller-top, .table-card header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .step-number, .metric-label, .metric-note, .table-caption, .detail, .footer-note, .dataset-status {
+      color: var(--muted);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(108, 112, 106, 0.12);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #22c55e);
+      transition: width 240ms ease;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      font: inherit;
+      background: #ece4d7;
+      color: var(--ink);
+    }
+
+    button.primary { background: var(--accent); color: #fff; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .dataset-controls {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .dataset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dataset-status {
+      font-size: 0.94rem;
+    }
+
+    input[type="file"] {
+      font: inherit;
+      max-width: 100%;
+    }
+
+    .metric-value { font-size: clamp(1.5rem, 3vw, 2.25rem); }
+    .metric-split {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    .table-card { min-height: 320px; }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(217, 205, 189, 0.9);
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    table { width: 100%; border-collapse: collapse; min-width: 520px; }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(217, 205, 189, 0.75);
+      text-align: left;
+      font-size: 0.94rem;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f7f0e4;
+      color: #514d46;
+      font-weight: 600;
+    }
+
+    tr.highlight {
+      animation: pulse 1s ease infinite alternate;
+      background: rgba(15, 118, 110, 0.08);
+    }
+
+    tr.to-ro { background: var(--ro-soft); }
+    tr.to-ca { background: var(--ca-soft); }
+    .empty { padding: 18px; color: var(--muted); font-style: italic; }
+
+    @keyframes pulse {
+      from { box-shadow: inset 0 0 0 0 rgba(15, 118, 110, 0.12); }
+      to { box-shadow: inset 0 0 0 999px rgba(15, 118, 110, 0.02); }
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid, .controls, .summary, .boards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <h1>Demo passo a passo do `gerar_ro.py`</h1>
+          <p>
+            Esta pagina mostra um exemplo pequeno do algoritmo em acao. O foco e visual:
+            separar origens e destinos, identificar `CODACAO` comuns, compensar valores
+            dentro da mesma acao e mandar as sobras para `CA`.
+          </p>
+        </div>
+        <div class="legend">
+          <div class="pill base">Mesma acao = mesmo `CODACAO`</div>
+          <div class="pill ro">Vai para `RO`</div>
+          <div class="pill ca">Vai para `CA`</div>
+        </div>
+      </div>
+      <div class="dataset-controls">
+        <div class="dataset-row">
+          <div class="dataset-actions">
+            <button class="primary" id="sampleBtn">Usar exemplo didatico</button>
+            <button id="loadRealBtn">Carregar CSV real do repo</button>
+          </div>
+          <div class="dataset-status" id="datasetStatus">Fonte atual: exemplo didatico</div>
+        </div>
+        <div class="dataset-row">
+          <input type="file" id="fileInput" accept=".csv">
+          <div class="dataset-status">Se o carregamento automatico falhar, selecione manualmente o CSV real.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="panel controller">
+        <div class="controller-top">
+          <div>
+            <div class="step-number" id="stepNumber">Passo 1 de 1</div>
+            <h2 id="stepTitle">Carregando</h2>
+          </div>
+          <div class="step-number" id="currentAction">Acao atual: -</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="buttons">
+          <button id="prevBtn">Anterior</button>
+          <button class="primary" id="playBtn">Reproduzir</button>
+          <button id="nextBtn">Proximo</button>
+          <button id="resetBtn">Reiniciar</button>
+        </div>
+      </div>
+
+      <div class="panel narration">
+        <div class="phase" id="phaseTag">Preparacao</div>
+        <div class="message" id="messageText"></div>
+        <div class="detail" id="detailText"></div>
+      </div>
+    </section>
+
+    <section class="summary">
+      <article class="panel metric">
+        <div class="metric-label">Linhas no arquivo de exemplo</div>
+        <div class="metric-value" id="metricRaw">0</div>
+        <div class="metric-note">Conjunto pequeno para facilitar a leitura</div>
+      </article>
+      <article class="panel metric">
+        <div class="metric-label">Saldo a compensar</div>
+        <div class="metric-value" id="metricDiff">-</div>
+        <div class="metric-note" id="metricDiffLabel">Sem processamento ativo</div>
+      </article>
+      <article class="panel metric">
+        <div class="metric-label">Total em `RO`</div>
+        <div class="metric-value" id="metricRO">0</div>
+        <div class="metric-note">Soma das linhas classificadas como remanejamento</div>
+      </article>
+      <article class="panel metric">
+        <div class="metric-label">Total em `CA`</div>
+        <div class="metric-value" id="metricCA">0</div>
+        <div class="metric-note">Soma das sobras e dos `CODACAO` sem par</div>
+      </article>
+      <article class="panel metric">
+        <div class="metric-label">RO por lado</div>
+        <div class="metric-split" id="metricROSplit">O: R$ 0,00<br>D: R$ 0,00</div>
+        <div class="metric-note">Conferencia entre origens e destinos dentro de `RO`</div>
+      </article>
+      <article class="panel metric">
+        <div class="metric-label">CA por lado</div>
+        <div class="metric-split" id="metricCASplit">O: R$ 0,00<br>D: R$ 0,00</div>
+        <div class="metric-note">Conferencia entre origens e destinos dentro de `CA`</div>
+      </article>
+    </section>
+
+    <section class="boards">
+      <article class="panel table-card">
+        <header>
+          <div>
+            <h3>Arquivo bruto</h3>
+            <div class="table-caption">Ordem original, antes da separacao</div>
+          </div>
+        </header>
+        <div class="table-wrap" id="rawTable"></div>
+      </article>
+
+      <article class="panel table-card">
+        <header>
+          <div>
+            <h3>Origens e destinos filtrados</h3>
+            <div class="table-caption">Apenas `CODACAO` que aparecem nos dois lados</div>
+          </div>
+        </header>
+        <div class="table-wrap" id="filteredTable"></div>
+      </article>
+
+      <article class="panel table-card">
+        <header>
+          <div>
+            <h3>Acumulador `RO`</h3>
+            <div class="table-caption">Linhas que fecharam dentro da mesma acao</div>
+          </div>
+        </header>
+        <div class="table-wrap" id="roTable"></div>
+      </article>
+
+      <article class="panel table-card">
+        <header>
+          <div>
+            <h3>Acumulador `CA`</h3>
+            <div class="table-caption">Sobras e acoes sem compensacao interna</div>
+          </div>
+        </header>
+        <div class="table-wrap" id="caTable"></div>
+      </article>
+    </section>
+
+    <div class="panel footer-note">
+      O exemplo abaixo foi reduzido para ficar didatico. A logica segue o mesmo principio do script:
+      compensar financeiramente origem e destino dentro do mesmo `CODACAO`, preservando a ordem
+      original quando precisa dividir uma linha.
+    </div>
+  </main>
+
+  <script>
+    const sampleRows = [
+      { id: "L1", OD: "O", CODACAO: "333", SUBACAO: "EMBS", VALOR: 100, AUTOR: "Autor A" },
+      { id: "L2", OD: "O", CODACAO: "333", SUBACAO: "EMCT", VALOR: 50, AUTOR: "Autor B" },
+      { id: "L3", OD: "D", CODACAO: "333", SUBACAO: "", VALOR: 80, AUTOR: "Autor C" },
+      { id: "L4", OD: "D", CODACAO: "333", SUBACAO: "", VALOR: 90, AUTOR: "Autor D" },
+      { id: "L5", OD: "O", CODACAO: "777", SUBACAO: "ENB0", VALOR: 120, AUTOR: "Autor E" },
+      { id: "L6", OD: "D", CODACAO: "777", SUBACAO: "", VALOR: 50, AUTOR: "Autor F" },
+      { id: "L7", OD: "D", CODACAO: "900", SUBACAO: "", VALOR: 40, AUTOR: "Autor G" },
+      { id: "L8", OD: "O", CODACAO: "901", SUBACAO: "EMAA", VALOR: 30, AUTOR: "Autor H" }
+    ];
+
+    const steps = [];
+    let activeSourceLabel = "exemplo didatico";
+
+    function clone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2
+      }).format(value || 0);
+    }
+
+    function toNumber(value) {
+      if (typeof value === "number") return value;
+      const normalized = String(value || "")
+        .trim()
+        .replace(/\./g, "")
+        .replace(",", ".");
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function sumRows(rows) {
+      return rows.reduce((acc, row) => acc + toNumber(row.VALOR), 0);
+    }
+
+    function sumByOD(rows, od) {
+      return rows
+        .filter((row) => String(row.OD || "").trim().toUpperCase() === od)
+        .reduce((acc, row) => acc + toNumber(row.VALOR), 0);
+    }
+
+    function snapshot(payload) {
+      steps.push({
+        phase: payload.phase,
+        title: payload.title,
+        message: payload.message,
+        detail: payload.detail,
+        currentAction: payload.currentAction || "-",
+        diffLabel: payload.diffLabel || "Sem processamento ativo",
+        diffValue: payload.diffValue ?? null,
+        raw: clone(payload.raw),
+        filtered: clone(payload.filtered),
+        ro: clone(payload.ro),
+        ca: clone(payload.ca),
+        highlightIds: [...(payload.highlightIds || [])]
+      });
+    }
+
+    function buildSteps(sourceRows, sourceLabel) {
+      steps.length = 0;
+      activeSourceLabel = sourceLabel;
+
+      const raw = sourceRows.map((row, index) => ({
+        id: row.id || `R${index + 1}`,
+        OD: String(row.OD || "").trim().toUpperCase(),
+        CODACAO: String(row.CODACAO || "").trim(),
+        SUBACAO: row.SUBACAO || "",
+        VALOR: toNumber(row.VALOR),
+        AUTOR: row.AUTOR || "",
+        __idx: index
+      }));
+      let dfOrigens = [];
+      let dfDestinos = [];
+      let filtered = [];
+      let ro = [];
+      let ca = [];
+
+      snapshot({
+        phase: "Preparacao",
+        title: "Arquivo de entrada",
+        message: `Fonte carregada: ${sourceLabel}.`,
+        detail: "A animacao percorre exatamente as linhas carregadas nesta pagina.",
+        raw, filtered, ro, ca
+      });
+
+      dfOrigens = raw.filter((row) => row.OD === "O").sort((a, b) => {
+        if (a.CODACAO !== b.CODACAO) return a.CODACAO.localeCompare(b.CODACAO);
+        return a.__idx - b.__idx;
+      });
+      dfDestinos = raw.filter((row) => row.OD === "D").sort((a, b) => {
+        if (a.CODACAO !== b.CODACAO) return a.CODACAO.localeCompare(b.CODACAO);
+        return a.__idx - b.__idx;
+      });
+
+      snapshot({
+        phase: "Separacao",
+        title: "Origens e destinos separados",
+        message: "O script divide as linhas em dois blocos: `OD = O` e `OD = D`.",
+        detail: "Dentro de cada bloco, a ordenacao usa `CODACAO` e depois a ordem original `__idx`.",
+        raw,
+        filtered: [...dfOrigens, ...dfDestinos],
+        ro,
+        ca,
+        highlightIds: raw.map((row) => row.id)
+      });
+
+      const codO = new Set(dfOrigens.map((row) => row.CODACAO));
+      const codD = new Set(dfDestinos.map((row) => row.CODACAO));
+      const codSomenteOrigem = [...codO].filter((cod) => !codD.has(cod));
+      const codSomenteDestino = [...codD].filter((cod) => !codO.has(cod));
+      const codacoesComuns = [...codO].filter((cod) => codD.has(cod)).sort();
+
+      snapshot({
+        phase: "Filtragem",
+        title: "Acoes com par e sem par",
+        message: "Agora o algoritmo identifica quais `CODACAO` aparecem nos dois lados.",
+        detail: "No exemplo, 333 e 777 sao comuns. O `CODACAO` 901 aparece so em origem e 900 aparece so em destino.",
+        raw,
+        filtered: [...dfOrigens, ...dfDestinos],
+        ro,
+        ca,
+        highlightIds: ["L5", "L6", "L7", "L8"]
+      });
+
+      const onlyO = dfOrigens.filter((row) => codSomenteOrigem.includes(row.CODACAO));
+      const onlyD = dfDestinos.filter((row) => codSomenteDestino.includes(row.CODACAO));
+      dfOrigens = dfOrigens.filter((row) => codacoesComuns.includes(row.CODACAO));
+      dfDestinos = dfDestinos.filter((row) => codacoesComuns.includes(row.CODACAO));
+      filtered = [...dfOrigens, ...dfDestinos];
+
+      snapshot({
+        phase: "Filtragem",
+        title: "Universo potencial de RO",
+        message: "Somente `CODACAO` presentes em origem e destino seguem para a conciliacao.",
+        detail: "As linhas L7 e L8 ficam guardadas para entrar em `CA` no final, porque nao existe compensacao dentro da mesma acao.",
+        raw, filtered, ro, ca,
+        highlightIds: ["L1", "L2", "L3", "L4", "L5", "L6"]
+      });
+
+      const codacoesUnicas = [...new Set(raw.map((row) => row.CODACAO))].sort();
+
+      for (const acao of codacoesUnicas) {
+        const dfO = dfOrigens.filter((row) => row.CODACAO === acao);
+        const dfD = dfDestinos.filter((row) => row.CODACAO === acao);
+        const somaOrigens = sumRows(dfO);
+        const somaDestinos = sumRows(dfD);
+
+        if (!dfO.length && !dfD.length) {
+          snapshot({
+            phase: "Loop",
+            title: `Acao ${acao} sem par interno`,
+            message: `O algoritmo passa pela acao ${acao}, mas ela nao esta no universo de conciliacao interna.`,
+            detail: "Ela sera encaminhada para `CA` ao final do processamento.",
+            currentAction: acao,
+            raw, filtered, ro, ca
+          });
+          continue;
+        }
+
+        snapshot({
+          phase: "Loop",
+          title: `Processando a acao ${acao}`,
+          message: `O script calcula os totais de origem e destino da acao ${acao}.`,
+          detail: `Origem = ${formatMoney(somaOrigens)} e destino = ${formatMoney(somaDestinos)}.`,
+          currentAction: acao,
+          raw, filtered, ro, ca,
+          highlightIds: dfO.concat(dfD).map((row) => row.id)
+        });
+
+        if (somaOrigens <= somaDestinos) {
+          ro = ro.concat(clone(dfO));
+          snapshot({
+            phase: "Loop",
+            title: `Acao ${acao}: origem menor ou igual ao destino`,
+            message: "Todas as origens entram em `RO`, porque conseguem ser absorvidas por destinos da mesma acao.",
+            detail: "Agora o algoritmo percorre os destinos ate completar o valor total das origens.",
+            currentAction: acao,
+            diffLabel: "Saldo de origem a fechar",
+            diffValue: somaOrigens,
+            raw, filtered, ro, ca,
+            highlightIds: dfO.map((row) => row.id)
+          });
+
+          let diffOrigem = somaOrigens;
+          for (let pos = 0; pos < dfD.length; pos += 1) {
+            const row = dfD[pos];
+            const valDest = toNumber(row.VALOR);
+
+            if (valDest > diffOrigem) {
+              const parteRO = { ...row, id: `${row.id}-RO`, origem: row.id, VALOR: diffOrigem };
+              const sobra = { ...row, id: `${row.id}-CA`, origem: row.id, VALOR: valDest - diffOrigem };
+              ro.push(parteRO);
+              ca.push(sobra);
+
+              snapshot({
+                phase: "Divisao",
+                title: `Linha ${row.id} dividida`,
+                message: `O destino ${row.id} e maior que o saldo restante. A linha e fracionada.`,
+                detail: `${formatMoney(diffOrigem)} vai para \`RO\` e ${formatMoney(valDest - diffOrigem)} vai para \`CA\`.`,
+                currentAction: acao,
+                diffLabel: "Saldo de origem a fechar",
+                diffValue: 0,
+                raw, filtered, ro, ca,
+                highlightIds: [row.id, parteRO.id, sobra.id]
+              });
+
+              if (pos + 1 < dfD.length) {
+                const resto = clone(dfD.slice(pos + 1));
+                ca = ca.concat(resto);
+                snapshot({
+                  phase: "Sobra",
+                  title: `Destinos restantes da acao ${acao}`,
+                  message: "Depois que a origem fecha, todo destino restante da mesma acao vira `CA`.",
+                  detail: `As linhas seguintes foram movidas integralmente para \`CA\`: ${resto.map((item) => item.id).join(", ")}.`,
+                  currentAction: acao,
+                  diffLabel: "Saldo de origem a fechar",
+                  diffValue: 0,
+                  raw, filtered, ro, ca,
+                  highlightIds: resto.map((item) => item.id)
+                });
+              }
+              break;
+            }
+
+            if (valDest === diffOrigem) {
+              ro.push(clone(row));
+              snapshot({
+                phase: "Fechamento",
+                title: `Linha ${row.id} fecha exatamente`,
+                message: "Esse destino fecha o saldo restante sem precisar dividir a linha.",
+                detail: `A linha ${row.id} entra inteira em \`RO\`.`,
+                currentAction: acao,
+                diffLabel: "Saldo de origem a fechar",
+                diffValue: 0,
+                raw, filtered, ro, ca,
+                highlightIds: [row.id]
+              });
+              if (pos + 1 < dfD.length) {
+                ca = ca.concat(clone(dfD.slice(pos + 1)));
+              }
+              break;
+            }
+
+            ro.push(clone(row));
+            diffOrigem -= valDest;
+            snapshot({
+              phase: "Conciliacao",
+              title: `Destino ${row.id} entrou inteiro em RO`,
+              message: "Como o destino ainda nao ultrapassou o saldo de origem, ele vai integralmente para `RO`.",
+              detail: `Saldo restante para fechar a origem: ${formatMoney(diffOrigem)}.`,
+              currentAction: acao,
+              diffLabel: "Saldo de origem a fechar",
+              diffValue: diffOrigem,
+              raw, filtered, ro, ca,
+              highlightIds: [row.id]
+            });
+          }
+        } else {
+          let diffDestino = somaDestinos;
+          snapshot({
+            phase: "Loop",
+            title: `Acao ${acao}: origem maior que destino`,
+            message: "Todos os destinos entrarao em `RO`. O algoritmo percorre as origens ate fechar esse total.",
+            detail: "Quando uma origem ultrapassa o saldo restante do destino, ela e dividida entre `RO` e `CA`.",
+            currentAction: acao,
+            diffLabel: "Saldo de destino a fechar",
+            diffValue: diffDestino,
+            raw, filtered, ro, ca,
+            highlightIds: dfO.concat(dfD).map((row) => row.id)
+          });
+
+          for (let pos = 0; pos < dfO.length; pos += 1) {
+            const row = dfO[pos];
+            const valOri = toNumber(row.VALOR);
+
+            if (valOri < diffDestino) {
+              ro.push(clone(row));
+              diffDestino -= valOri;
+              snapshot({
+                phase: "Conciliacao",
+                title: `Origem ${row.id} entrou inteira em RO`,
+                message: "A origem ainda nao ultrapassa o saldo dos destinos, entao ela vai toda para `RO`.",
+                detail: `Saldo de destino ainda nao compensado: ${formatMoney(diffDestino)}.`,
+                currentAction: acao,
+                diffLabel: "Saldo de destino a fechar",
+                diffValue: diffDestino,
+                raw, filtered, ro, ca,
+                highlightIds: [row.id]
+              });
+              continue;
+            }
+
+            if (valOri > diffDestino) {
+              const parteRO = { ...row, id: `${row.id}-RO`, origem: row.id, VALOR: diffDestino };
+              const sobra = { ...row, id: `${row.id}-CA`, origem: row.id, VALOR: valOri - diffDestino };
+              ro.push(parteRO);
+              ca.push(sobra);
+              snapshot({
+                phase: "Divisao",
+                title: `Linha ${row.id} dividida`,
+                message: `A origem ${row.id} ultrapassou o saldo de destino da acao ${acao}.`,
+                detail: `${formatMoney(diffDestino)} fica em \`RO\` e ${formatMoney(valOri - diffDestino)} vira \`CA\`.`,
+                currentAction: acao,
+                diffLabel: "Saldo de destino a fechar",
+                diffValue: 0,
+                raw, filtered, ro, ca,
+                highlightIds: [row.id, parteRO.id, sobra.id]
+              });
+              if (pos + 1 < dfO.length) {
+                const resto = clone(dfO.slice(pos + 1));
+                ca = ca.concat(resto);
+                snapshot({
+                  phase: "Sobra",
+                  title: `Origens restantes da acao ${acao}`,
+                  message: "Depois que o destino fecha, toda origem restante da mesma acao vira `CA`.",
+                  detail: `As linhas seguintes foram movidas integralmente para \`CA\`: ${resto.map((item) => item.id).join(", ")}.`,
+                  currentAction: acao,
+                  diffLabel: "Saldo de destino a fechar",
+                  diffValue: 0,
+                  raw, filtered, ro, ca,
+                  highlightIds: resto.map((item) => item.id)
+                });
+              }
+              break;
+            }
+
+            ro.push(clone(row));
+            snapshot({
+              phase: "Fechamento",
+              title: `Origem ${row.id} fecha exatamente`,
+              message: "A origem fecha exatamente o saldo dos destinos sem fracionamento.",
+              detail: `A linha ${row.id} entra inteira em \`RO\`.`,
+              currentAction: acao,
+              diffLabel: "Saldo de destino a fechar",
+              diffValue: 0,
+              raw, filtered, ro, ca,
+              highlightIds: [row.id]
+            });
+            if (pos + 1 < dfO.length) {
+              ca = ca.concat(clone(dfO.slice(pos + 1)));
+            }
+            break;
+          }
+
+          ro = ro.concat(clone(dfD));
+          snapshot({
+            phase: "Fechamento",
+            title: `Destinos da acao ${acao} adicionados em RO`,
+            message: "No caso origem > destino, todos os destinos da acao entram em `RO`.",
+            detail: `As linhas ${dfD.map((item) => item.id).join(", ")} foram adicionadas ao acumulador.`,
+            currentAction: acao,
+            diffLabel: "Saldo de destino a fechar",
+            diffValue: 0,
+            raw, filtered, ro, ca,
+            highlightIds: dfD.map((item) => item.id)
+          });
+        }
+      }
+
+      ca = ca.concat(clone(onlyO), clone(onlyD));
+      snapshot({
+        phase: "Finalizacao",
+        title: "Acoes sem par entram em CA",
+        message: "No final, o script envia para `CA` tudo o que apareceu so em origem ou so em destino.",
+        detail: `No exemplo, isso inclui as linhas ${onlyO.concat(onlyD).map((item) => item.id).join(", ")}.`,
+        raw, filtered, ro, ca,
+        highlightIds: onlyO.concat(onlyD).map((item) => item.id)
+      });
+
+      const roAntes = ro.length;
+      const caAntes = ca.length;
+      ro = consolidateRows(ro);
+      ca = consolidateRows(ca);
+
+      snapshot({
+        phase: "Consolidacao",
+        title: "Consolidacao de linhas equivalentes",
+        message: "Antes do resultado final, a demo agrupa linhas iguais em `RO` e `CA` e soma seus valores.",
+        detail:
+          `A chave de consolidacao usa OD, CODACAO, SUBACAO, GD, MA, MUNICIPIO e OBJETO. ` +
+          `RO: ${roAntes} -> ${ro.length} linhas. CA: ${caAntes} -> ${ca.length} linhas.`,
+        raw, filtered, ro, ca
+      });
+
+      const roAntesNet = ro.length;
+      const caAntesNet = ca.length;
+      ro = netOppositeRows(ro);
+      ca = netOppositeRows(ca);
+
+      snapshot({
+        phase: "Compensacao",
+        title: "Compensacao entre origem e destino iguais",
+        message: "Quando a mesma linha tecnica aparece como origem e destino, a demo mantem apenas a diferenca liquida.",
+        detail:
+          "A comparacao usa CODACAO, SUBACAO, GD, MA, MUNICIPIO e OBJETO. " +
+          `RO: ${roAntesNet} -> ${ro.length} linhas. CA: ${caAntesNet} -> ${ca.length} linhas.`,
+        raw, filtered, ro, ca
+      });
+
+      snapshot({
+        phase: "Finalizacao",
+        title: "Arquivos finais",
+        message: "O processamento termina com dois acumuladores: um para `RO` e outro para `CA`.",
+        detail: "No script real, depois da consolidacao e da compensacao liquida, os acumuladores sao exportados como `df_RO.csv` e `df_CA.csv`.",
+        raw, filtered, ro, ca
+      });
+    }
+
+    function renderTable(containerId, rows, highlightIds, mode) {
+      const container = document.getElementById(containerId);
+      const orderedRows = mode === "ca" ? sortRowsOriginFirst(rows) : rows;
+      if (!rows.length) {
+        container.innerHTML = '<div class="empty">Sem linhas neste momento.</div>';
+        return;
+      }
+
+      const columns = ["id", "OD", "CODACAO", "SUBACAO", "VALOR", "AUTOR"];
+      container.innerHTML = `
+        <table>
+          <thead><tr>${columns.map((col) => `<th>${col}</th>`).join("")}</tr></thead>
+          <tbody>
+            ${orderedRows.map((row) => {
+              const classes = [];
+              if (highlightIds.includes(row.id) || (row.origem && highlightIds.includes(row.origem))) classes.push("highlight");
+              if (mode === "ro") classes.push("to-ro");
+              if (mode === "ca") classes.push("to-ca");
+              return `
+                <tr class="${classes.join(" ")}">
+                  <td>${row.id}</td>
+                  <td>${row.OD}</td>
+                  <td>${row.CODACAO}</td>
+                  <td>${row.SUBACAO || "-"}</td>
+                  <td>${formatMoney(toNumber(row.VALOR))}</td>
+                  <td>${row.AUTOR}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderFilteredTable(rows, highlightIds) {
+      const container = document.getElementById("filteredTable");
+      if (!rows.length) {
+        container.innerHTML = '<div class="empty">Nenhum CODACAO comum selecionado ainda.</div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>id</th><th>OD</th><th>CODACAO</th><th>VALOR</th><th>Observacao</th></tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr class="${highlightIds.includes(row.id) ? "highlight" : ""}">
+                <td>${row.id}</td>
+                <td>${row.OD}</td>
+                <td>${row.CODACAO}</td>
+                <td>${formatMoney(toNumber(row.VALOR))}</td>
+                <td>${row.OD === "O" ? "origem candidata a RO" : "destino candidato a RO"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function parseSemicolonCsv(text) {
+      const rows = [];
+      let current = "";
+      let row = [];
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const next = text[i + 1];
+
+        if (char === '"') {
+          if (inQuotes && next === '"') {
+            current += '"';
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+          continue;
+        }
+
+        if (char === ";" && !inQuotes) {
+          row.push(current);
+          current = "";
+          continue;
+        }
+
+        if ((char === "\n" || char === "\r") && !inQuotes) {
+          if (char === "\r" && next === "\n") i += 1;
+          row.push(current);
+          if (row.some((cell) => cell !== "")) rows.push(row);
+          row = [];
+          current = "";
+          continue;
+        }
+
+        current += char;
+      }
+
+      if (current.length || row.length) {
+        row.push(current);
+        if (row.some((cell) => cell !== "")) rows.push(row);
+      }
+
+      const [header, ...body] = rows;
+      return body.map((cells, index) => {
+        const record = { id: `R${index + 1}` };
+        header.forEach((name, position) => {
+          record[String(name || "").trim()] = cells[position] ?? "";
+        });
+        return record;
+      });
+    }
+
+    function loadDataset(rows, label) {
+      buildSteps(rows, label);
+      currentStep = 0;
+      renderStep(currentStep);
+      document.getElementById("datasetStatus").textContent = `Fonte atual: ${label}`;
+      stopPlayback();
+    }
+
+    function normalizeKeyPart(value) {
+      return String(value || "").trim();
+    }
+
+    function consolidateRows(rows) {
+      const keyFields = ["OD", "CODACAO", "SUBACAO", "GD", "MA", "MUNICIPIO", "OBJETO"];
+      const grouped = new Map();
+
+      rows.forEach((row) => {
+        const normalized = {
+          ...row,
+          SUBACAO: normalizeKeyPart(row.SUBACAO),
+          GD: normalizeKeyPart(row.GD),
+          MA: normalizeKeyPart(row.MA),
+          MUNICIPIO: normalizeKeyPart(row.MUNICIPIO),
+          OBJETO: normalizeKeyPart(row.OBJETO)
+        };
+
+        const key = keyFields.map((field) => normalizeKeyPart(normalized[field])).join("||");
+        const current = grouped.get(key);
+
+        if (!current) {
+          grouped.set(key, {
+            ...normalized,
+            VALOR: toNumber(normalized.VALOR),
+            AUTOR_SET: new Set(normalizeKeyPart(normalized.AUTOR) ? [normalizeKeyPart(normalized.AUTOR)] : []),
+            NUMERO_SET: new Set(normalizeKeyPart(normalized.NUMERO) ? [normalizeKeyPart(normalized.NUMERO)] : [])
+          });
+          return;
+        }
+
+        current.VALOR += toNumber(normalized.VALOR);
+        if (normalizeKeyPart(normalized.AUTOR)) current.AUTOR_SET.add(normalizeKeyPart(normalized.AUTOR));
+        if (normalizeKeyPart(normalized.NUMERO)) current.NUMERO_SET.add(normalizeKeyPart(normalized.NUMERO));
+      });
+
+      return [...grouped.values()].map((row, index) => ({
+        ...row,
+        id: row.id || `C${index + 1}`,
+        AUTOR: [...row.AUTOR_SET].join(" | "),
+        NUMERO: [...row.NUMERO_SET].join(" | ")
+      }));
+    }
+
+    function netOppositeRows(rows) {
+      const keyFields = ["CODACAO", "SUBACAO", "GD", "MA", "MUNICIPIO", "OBJETO"];
+      const grouped = new Map();
+
+      rows.forEach((row) => {
+        const key = keyFields.map((field) => normalizeKeyPart(row[field])).join("||");
+        const current = grouped.get(key) || { O: null, D: null, order: grouped.size };
+        current[row.OD] = row;
+        grouped.set(key, current);
+      });
+
+      const result = [];
+      [...grouped.values()]
+        .sort((a, b) => a.order - b.order)
+        .forEach((pair, index) => {
+          const rowO = pair.O;
+          const rowD = pair.D;
+
+          if (rowO && rowD) {
+            const diff = toNumber(rowD.VALOR) - toNumber(rowO.VALOR);
+            if (diff > 0) {
+              result.push({ ...rowD, id: `N${index + 1}`, VALOR: diff });
+            } else if (diff < 0) {
+              result.push({ ...rowO, id: `N${index + 1}`, VALOR: Math.abs(diff) });
+            }
+            return;
+          }
+
+          if (rowO) result.push({ ...rowO, id: `N${index + 1}` });
+          if (rowD) result.push({ ...rowD, id: `N${index + 1}` });
+        });
+
+      return result;
+    }
+
+    function sortRowsOriginFirst(rows) {
+      return [...rows].sort((a, b) => {
+        const orderA = String(a.OD || "").trim().toUpperCase() === "O" ? 0 : 1;
+        const orderB = String(b.OD || "").trim().toUpperCase() === "O" ? 0 : 1;
+        return orderA - orderB;
+      });
+    }
+
+    let currentStep = 0;
+    let timer = null;
+
+    function renderStep(index) {
+      const step = steps[index];
+      document.getElementById("stepNumber").textContent = `Passo ${index + 1} de ${steps.length}`;
+      document.getElementById("stepTitle").textContent = step.title;
+      document.getElementById("currentAction").textContent = `Acao atual: ${step.currentAction}`;
+      document.getElementById("phaseTag").textContent = step.phase;
+      document.getElementById("messageText").textContent = step.message;
+      document.getElementById("detailText").textContent = step.detail;
+      document.getElementById("metricRaw").textContent = String(step.raw.length);
+      document.getElementById("metricDiff").textContent = step.diffValue === null ? "-" : formatMoney(step.diffValue);
+      document.getElementById("metricDiffLabel").textContent = step.diffLabel;
+      document.getElementById("metricRO").textContent = formatMoney(sumRows(step.ro));
+      document.getElementById("metricCA").textContent = formatMoney(sumRows(step.ca));
+      document.getElementById("metricROSplit").innerHTML =
+        `O: ${formatMoney(sumByOD(step.ro, "O"))}<br>D: ${formatMoney(sumByOD(step.ro, "D"))}`;
+      document.getElementById("metricCASplit").innerHTML =
+        `O: ${formatMoney(sumByOD(step.ca, "O"))}<br>D: ${formatMoney(sumByOD(step.ca, "D"))}`;
+      document.getElementById("progressFill").style.width = `${((index + 1) / steps.length) * 100}%`;
+
+      renderTable("rawTable", step.raw, step.highlightIds, "raw");
+      renderFilteredTable(step.filtered, step.highlightIds);
+      renderTable("roTable", step.ro, step.highlightIds, "ro");
+      renderTable("caTable", step.ca, step.highlightIds, "ca");
+
+      document.getElementById("prevBtn").disabled = index === 0;
+      document.getElementById("nextBtn").disabled = index === steps.length - 1;
+    }
+
+    function stopPlayback() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      document.getElementById("playBtn").textContent = "Reproduzir";
+    }
+
+    function nextStep() {
+      if (currentStep < steps.length - 1) {
+        currentStep += 1;
+        renderStep(currentStep);
+      } else {
+        stopPlayback();
+      }
+    }
+
+    document.getElementById("nextBtn").addEventListener("click", nextStep);
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      stopPlayback();
+      if (currentStep > 0) {
+        currentStep -= 1;
+        renderStep(currentStep);
+      }
+    });
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      stopPlayback();
+      currentStep = 0;
+      renderStep(currentStep);
+    });
+    document.getElementById("playBtn").addEventListener("click", () => {
+      if (timer) {
+        stopPlayback();
+        return;
+      }
+      document.getElementById("playBtn").textContent = "Pausar";
+      timer = setInterval(() => {
+        if (currentStep >= steps.length - 1) {
+          stopPlayback();
+          return;
+        }
+        nextStep();
+      }, 100);
+    });
+
+    document.getElementById("sampleBtn").addEventListener("click", () => {
+      loadDataset(sampleRows, "exemplo didatico");
+    });
+
+    document.getElementById("loadRealBtn").addEventListener("click", async () => {
+      try {
+        const response = await fetch("../Remanejamentos%202025-08-utf8.csv");
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const text = await response.text();
+        const rows = parseSemicolonCsv(text);
+        loadDataset(rows, "CSV real do repositorio");
+      } catch (error) {
+        document.getElementById("datasetStatus").textContent =
+          "Falha ao carregar automaticamente. Use o seletor de arquivo abaixo ou abra a pagina via http://localhost:8000.";
+      }
+    });
+
+    document.getElementById("fileInput").addEventListener("change", async (event) => {
+      const [file] = event.target.files || [];
+      if (!file) return;
+      const text = await file.text();
+      const rows = parseSemicolonCsv(text);
+      loadDataset(rows, `arquivo enviado: ${file.name}`);
+    });
+
+    loadDataset(sampleRows, "exemplo didatico");
+  </script>
+</body>
+</html>
